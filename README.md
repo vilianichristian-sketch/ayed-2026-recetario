@@ -1,16 +1,16 @@
-# TP integrador — AyED C2 2026
+# TP integrador — AyED C2 2026 · Recetario
 
-Repositorio del grupo. Partir de este esqueleto. No borrar la estructura de `src/` ni de `docs/`.
+Repositorio del grupo. Gestor de un **libro de recetas** en consola (CLI), hecho en Python 3 con biblioteca estándar.
 
-## Integrantes
+## Integrante
 
 | Nombre | Mail | GitHub |
 | --- | --- | --- |
-|  |  |  |
-|  |  |  |
-|  |  |  |
+| Viliani Christian | viliani.christian@gmail.com | @vilianichristian-sketch |
 
-**Tema elegido:** Pokédex / Recetario / Biblioteca musical (dejar uno)
+**Comisión:** 1 (trabajo individual)
+
+**Tema elegido:** Recetario (`TEMA = "recetario"` en `src/config.py`).
 
 ## Cómo ejecutar
 
@@ -23,6 +23,29 @@ python -m src.main
 En Windows, si `python` no anda: `py -3 -m src.main`.
 
 Solo biblioteca estándar. No hay `requirements.txt` a propósito.
+
+## Qué hace (estado en esta entrega: E1)
+
+| Opción | Estado |
+| --- | --- |
+| 1. Listar catálogo | ✅ catálogo armado a mano en `src/dominio/receta.py` |
+| 2. Ver detalle | ✅ por id |
+| 3 a 9 | se completan en las próximas entregas |
+
+## Estructura
+
+```text
+src/
+  config.py        TEMA elegido
+  main.py          menú + despacho de opciones
+  excepciones.py   excepciones propias
+  dominio/         receta.py: catálogo (lista de dicts) y funciones de listado/detalle
+  tads/            (E3)
+  algoritmos/      (E4)
+  persistencia/    (E5)
+data/              datasets .txt (se leen recién en E5)
+docs/              INFORME.md, PROTOCOLO_PRUEBAS.md, DECLARACION_IA.md
+```
 
 ## Entregas
 
@@ -41,5 +64,3 @@ Cada vencimiento se marca con un tag. Ver `GIT.md`.
 Defensa oral (reemplaza el 2do parcial): 25 y 27-nov-2026.
 
 La cátedra corrige el **tag**, no el último commit suelto de `main`.
-
-El grupo se avisa por mail a diego.ambrossio@unab.edu.ar **y** angel.bianco@unab.edu.ar. Ver `GIT.md`.
