@@ -24,22 +24,26 @@ En Windows, si `python` no anda: `py -3 -m src.main`.
 
 Solo biblioteca estándar. No hay `requirements.txt` a propósito.
 
-## Qué hace (estado en esta entrega: E1)
+## Qué hace (estado en esta entrega: E2)
 
 | Opción | Estado |
 | --- | --- |
-| 1. Listar catálogo | ✅ catálogo armado a mano en `src/dominio/receta.py` |
-| 2. Ver detalle | ✅ por id |
-| 3 a 9 | se completan en las próximas entregas |
+| 1. Listar catálogo | ✅ |
+| 2. Ver detalle | ✅ datos, ingredientes propios y sub-recetas |
+| 5. Operación recursiva | ✅ árbol de sub-recetas e ingredientes totales (con traza) |
+| 6. Menú semanal | ✅ ver / agregar (tope 7) / quitar |
+| 3, 4, 7, 8, 9 | se completan en E3–E5 |
 
 ## Estructura
 
 ```text
 src/
   config.py        TEMA elegido
-  main.py          menú + despacho de opciones
+  main.py          menú + despacho de opciones (sin lógica del negocio)
   excepciones.py   excepciones propias
-  dominio/         receta.py: catálogo (lista de dicts) y funciones de listado/detalle
+  cli/             entrada.py (lectura segura de datos) y pantallas.py (una función por opción)
+  dominio/         Receta, Ingrediente, Recetario, MenuSemanal, SistemaRecetario,
+                   desglose.py (recursión) y datos_iniciales.py (catálogo armado en el código)
   tads/            (E3)
   algoritmos/      (E4)
   persistencia/    (E5)
