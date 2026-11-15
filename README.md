@@ -24,15 +24,17 @@ En Windows, si `python` no anda: `py -3 -m src.main`.
 
 Solo biblioteca estándar. No hay `requirements.txt` a propósito.
 
-## Qué hace (estado en esta entrega: E2)
+## Qué hace (estado en esta entrega: E3)
 
 | Opción | Estado |
 | --- | --- |
-| 1. Listar catálogo | ✅ |
+| 1. Listar catálogo | ✅ recorre la `ListaEnlazada` con su iterador |
 | 2. Ver detalle | ✅ datos, ingredientes propios y sub-recetas |
 | 5. Operación recursiva | ✅ árbol de sub-recetas e ingredientes totales (con traza) |
-| 6. Menú semanal | ✅ ver / agregar (tope 7) / quitar |
-| 3, 4, 7, 8, 9 | se completan en E3–E5 |
+| 6. Menú semanal | ✅ alta / baja / modificación sobre `ListaEnlazada`, tope 7 |
+| 7. Historial (pila) | ✅ registrar (apilar), deshacer (desapilar), ver última (tope) |
+| 8. Cola de preparación | ✅ encolar, preparar siguiente (desencolar → historial), ver próxima, encolar el menú |
+| 3, 4, 9 | se completan en E4–E5 |
 
 ## Estructura
 
@@ -42,9 +44,10 @@ src/
   main.py          menú + despacho de opciones (sin lógica del negocio)
   excepciones.py   excepciones propias
   cli/             entrada.py (lectura segura de datos) y pantallas.py (una función por opción)
-  dominio/         Receta, Ingrediente, Recetario, MenuSemanal, SistemaRecetario,
+  dominio/         Receta, Ingrediente, Recetario, MenuSemanal, Historial, ColaPreparacion,
+                   SistemaRecetario,
                    desglose.py (recursión) y datos_iniciales.py (catálogo armado en el código)
-  tads/            (E3)
+  tads/            Nodo, ListaEnlazada (con iterador), Pila y Cola
   algoritmos/      (E4)
   persistencia/    (E5)
 data/              datasets .txt (se leen recién en E5)

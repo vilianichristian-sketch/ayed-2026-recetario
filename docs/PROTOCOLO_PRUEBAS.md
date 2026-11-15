@@ -8,25 +8,31 @@ Mínimos: 8 casos escritos en E2; ejecutados en E3; 15 de regresión en E6 (pila
 
 Los IDs P01–P15 son los del esqueleto de la cátedra; P16 en adelante son casos agregados por el grupo.
 
+**Última ejecución:** 10-nov-2026, sobre el código de la entrega E3. Los casos de entregas anteriores se vuelven a correr como regresión.
+
 | ID | Entrega | Acción (pasos en el CLI) | Datos | Resultado esperado | Resultado | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
-| P01 | E1 | Arrancar el programa y elegir `1` (listar catálogo) | dataset de la cátedra | se listan las 30 recetas y "Total: 30 recetas.", sin traceback | no corrido |  |
-| P02 | E1 | Elegir `2` (ver detalle) e ingresar un id inexistente | id = `-1` | "Error: No existe una receta con id -1." y vuelve el menú | no corrido |  |
-| P03 | E2 | Elegir `5` → `1` (árbol de sub-recetas) con una receta que usa sub-recetas | id = `10` (Empanadas de carne) | imprime Empanadas de carne y debajo Sofrito y Masa de empanadas | no corrido |  |
-| P04 | E2 | Elegir `5` → `1` con una receta que no usa sub-recetas | id = `3` (Sofrito) | imprime solo "Sofrito" y aclara que es receta hoja (caso base) | no corrido |  |
-| P05 | E3 | Elegir `6` → `2` (agregar al menú semanal) ocho veces | ids `1` a `8` | las 7 primeras se agregan; la octava muestra "El menú semanal está completo (máximo 7...)" y el programa sigue | no corrido | se ejecuta en E3 |
-| P06 | E3 | Desapilar historial vacío |  | excepción propia, menú sigue |  | se ejecuta en E3 |
-| P07 | E3 | Desencolar cola vacía |  | excepción propia, menú sigue |  | se ejecuta en E3 |
-| P08 | E3 | Listar colección con el iterador | 2+ ítems | el orden coincide con las inserciones |  | se ejecuta en E3 |
-| P09 | E4 | Búsqueda lineal de un nombre que existe |  | lo encuentra |  | se ejecuta en E4 |
-| P10 | E4 | Búsqueda lineal de un nombre que no existe |  | no encontrado, sin traceback |  | se ejecuta en E4 |
-| P11 | E4 | Búsqueda binaria con catálogo desordenado |  | avisa o reordena; no da un falso hit |  | se ejecuta en E4 |
-| P12 | E4 | Ordenar por un criterio y después por otro |  | el orden cambia |  | se ejecuta en E4 |
-| P13 | E5 | Guardar texto (`.txt`), salir, volver a entrar |  | los datos siguen |  | se ejecuta en E5 |
-| P14 | E5 | Guardar binario y modificar un registro por id |  | al recargar, ese campo cambió |  | se ejecuta en E5 |
-| P15 | E5 | Abrir un binario truncado o con magia mala | archivo basura | excepción de archivo inválido |  | se ejecuta en E5 |
-| P16 | E1 | Elegir `2` (ver detalle) con un id que existe | id = `9` (Asado) | muestra nombre, tiempo (180), dificultad, categoría, ingredientes propios y sub-recetas (Chimichurri, Salsa criolla) | no corrido |  |
-| P17 | E1 | Escribir una opción inválida en el menú principal | `9z` | "Opción inválida..." y vuelve a mostrar el menú | no corrido |  |
-| P18 | E1 | Apretar Enter sin escribir nada en el menú principal | (vacío) | "Opción inválida..." y vuelve a mostrar el menú, no explota | no corrido |  |
-| P19 | E2 | Elegir `5` → `3` (ingredientes totales con traza) | id = `9` (Asado) | muestra la traza: llamada a 9, luego 1 y 2 como caso base; total 12 ingredientes con aceite de oliva 120 ml y vinagre 50 ml | no corrido |  |
-| P20 | E2 | Elegir `2` (ver detalle) y escribir letras en lugar del id | `abc`, luego Enter vacío | avisa que no es un número, vuelve a preguntar; con Enter vacío cancela | no corrido |  |
+| P01 | E1 | Arrancar el programa y elegir `1` (listar catálogo) | dataset de la cátedra | se listan las 30 recetas y "Total: 30 recetas.", sin traceback | pasa |  |
+| P02 | E1 | Elegir `2` (ver detalle) e ingresar un id inexistente | id = `-1` | "Error: No existe una receta con id -1." y vuelve el menú | pasa |  |
+| P03 | E2 | Elegir `5` → `1` (árbol de sub-recetas) con una receta que usa sub-recetas | id = `10` (Empanadas de carne) | imprime Empanadas de carne y debajo `+-- Sofrito` y `+-- Masa de empanadas` | pasa |  |
+| P04 | E2 | Elegir `5` → `1` con una receta que no usa sub-recetas | id = `3` (Sofrito) | imprime solo Sofrito y aclara que es receta hoja (caso base) | pasa |  |
+| P05 | E3 | Elegir `6` → `2` (agregar al menú semanal) ocho veces | ids `1` a `8` | las 7 primeras se agregan; la octava muestra "El menú semanal está completo (máximo 7...)" (`ColeccionLlenaError`) y el programa sigue | pasa |  |
+| P06 | E3 | Elegir `7` → `3` (deshacer) sin haber cocinado nada | pila vacía | "Error: No hay recetas cocinadas en el historial para deshacer." (`PilaVaciaError`), el menú sigue | pasa |  |
+| P07 | E3 | Elegir `8` → `3` (preparar la siguiente) con la cola vacía | cola vacía | "Error: No hay recetas en la cola de preparación." (`ColaVaciaError`), el menú sigue | pasa |  |
+| P08 | E3 | Elegir `6` → `2` tres veces y después `6` → `1` (ver menú, usa el iterador) | ids `12`, `1`, `25` | Lunes Locro, Martes Chimichurri, Miércoles Brownies: el orden coincide con las inserciones | pasa |  |
+| P09 | E4 | Elegir `3` → `1` (búsqueda lineal por nombre) con un nombre que existe | `locro` (en minúsculas) | muestra la receta Locro (150 min); no distingue mayúsculas |  | se ejecuta en E4 |
+| P10 | E4 | Elegir `3` → `1` con un nombre que no existe | `Ravioles` | "No se encontró...", sin traceback, el menú sigue |  | se ejecuta en E4 |
+| P11 | E4 | Recién arrancado (catálogo ordenado por id, no por nombre) elegir `3` → `2` (búsqueda binaria) | `Pesto` | avisa "El catálogo no estaba ordenado por nombre: se ordenó..." y recién ahí usa binaria; encuentra Pesto (no da falso "no encontrado") |  | se ejecuta en E4 |
+| P12 | E4 | Elegir `4` → criterio `1` (nombre) → algoritmo `1` (selección); después `4` → criterio `4`... `2` (tiempo) → `2` (inserción) | catálogo completo | primero queda ordenado alfabéticamente (empieza en Arroz con leche); después por tiempo (empieza por las de 15 min); el orden cambia |  | se ejecuta en E4 |
+| P13 | E5 | `9` → `7` (alta persistente) con una receta nueva; salir con `0`; volver a entrar y `1` (listar) | Tarta de jamon y queso, 55, media, principal | se guarda como #31 en `data/recetas.txt`; al volver a entrar aparece en el listado y el total es 31 |  | se probó sobre una copia del repo para no modificar el dataset; se ejecuta en E5 |
+| P14 | E5 | `9` → `3` (guardar binario) → `6` (modificar registro) por id `9`, tiempo `200` → `4` (cargar binario) → `2` detalle de `9` | id 9 (Asado, 180 min) | "Registro actualizado" en la posición 8; al recargar el binario el Asado tiene 200 minutos |  | se ejecuta en E5 |
+| P15 | E5 | `9` → `4` (cargar binario) con un archivo truncado y con otro de magia mala | `data/basura.bin` (6 bytes), `data/magia.bin` (magia `NOPE`) | `ArchivoInvalidoError` con mensaje ("truncado" / "magia"); el catálogo en memoria no cambia (sigue en 30) |  | se ejecuta en E5 |
+| P16 | E1 | Elegir `2` (ver detalle) con un id que existe | id = `9` (Asado) | muestra nombre, 180 minutos, dificultad, categoría, ingredientes propios y "Usa las sub-recetas: Chimichurri (#1), Salsa criolla (#2)" | pasa |  |
+| P17 | E1 | Escribir una opción inválida en el menú principal | `9z` | "Opción inválida..." y vuelve a mostrar el menú | pasa |  |
+| P18 | E1 | Apretar Enter sin escribir nada en el menú principal | (vacío) | "Opción inválida..." y vuelve a mostrar el menú, no explota | pasa |  |
+| P19 | E2 | Elegir `5` → `3` (ingredientes totales con traza) | id = `9` (Asado) | muestra la traza: llamada a 9, luego 1 y 2 como caso base; total 12 ingredientes con 120 ml de aceite de oliva y 50 ml de vinagre | pasa |  |
+| P20 | E2 | Elegir `2` (ver detalle) y escribir letras en lugar del id; después Enter vacío | `abc`, luego Enter | avisa que no es un número y vuelve a preguntar; con Enter vacío dice "Cancelado." | pasa |  |
+| P21 | E3 | Menú: agregar `10` y `3`; `8` → `5` (encolar el menú) → `3` (preparar) → `1` (ver cola); `7` → `1` (ver historial) | ids `10`, `3` | se encolan 2; se prepara Empanadas de carne (FIFO); en la cola queda Sofrito como próxima; el historial tiene Empanadas en el tope | pasa | integra lista, cola y pila |
+| P22 | E4 | Elegir `3` → `4` (búsqueda lineal por ingrediente) | `papa` | lista Pure de papas, Noquis con pesto, Tortilla de papas, Pollo al horno con papas y Ensalada rusa |  | se ejecuta en E4 |
+
+Resumen: 14 casos ejecutados, 14 pasan, 0 no pasan.

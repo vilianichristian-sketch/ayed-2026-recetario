@@ -8,7 +8,7 @@ Fecha de esta versión del archivo: 10-nov-2026
 | --- | --- | --- | --- | --- | --- | --- |
 | E1 | 10-nov-2026 | Claude (Anthropic), vía Claude Code | Diseño, código y docs | Catálogo armado a mano en `src/dominio/receta.py`, menú de `src/main.py` (opciones 1 y 2), README e informe §1–§2 | — | Viliani Christian |
 | E2 | 10-nov-2026 | Claude (Anthropic), vía Claude Code | Diseño, código y docs | Clases `Receta`, `Ingrediente`, `Recetario`, `MenuSemanal`, `SistemaRecetario`; recursión `desglose.py`; paquete `src/cli`; traza del informe §3; protocolo con 13 casos escritos | — | Viliani Christian |
-| E3 |  |  |  |  |  |  |
+| E3 | 10-nov-2026 | Claude (Anthropic), vía Claude Code | Diseño, código, pruebas y docs | `Nodo`, `ListaEnlazada` con iterador, `Pila`, `Cola`; `Historial`, `ColaPreparacion`; encapsulamiento de `Receta`; excepciones propias; informe §4; ejecución del protocolo | — | Viliani Christian |
 | E4 |  |  |  |  |  |  |
 | E5 |  |  |  |  |  |  |
 | E6 |  |  |  |  |  |  |

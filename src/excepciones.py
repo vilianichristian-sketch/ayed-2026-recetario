@@ -1,33 +1,45 @@
-"""Excepciones propias del sistema."""
+"""Excepciones propias del sistema.
+
+Todas heredan de RecetarioError, así el menú principal puede tener una red de
+seguridad (`except RecetarioError`) sin usar nunca un `except:` pelado.
+"""
 
 
-class ItemNoEncontradoError(Exception):
+class RecetarioError(Exception):
+    """Base de todas las excepciones propias del TP."""
+
+
+class ItemNoEncontradoError(RecetarioError):
     """No existe una receta (o un elemento de una colección) con ese id."""
 
 
-class ColeccionLlenaError(Exception):
+class ColeccionLlenaError(RecetarioError):
     """Se quiso agregar a una colección que llegó a su tope."""
 
 
-class ColeccionVaciaError(Exception):
+class ColeccionVaciaError(RecetarioError):
     """Se quiso sacar algo de una colección vacía."""
 
 
-class PilaVaciaError(Exception):
+class PilaVaciaError(RecetarioError):
     """Se quiso desapilar / ver el tope de una pila vacía."""
 
 
-class ColaVaciaError(Exception):
+class ColaVaciaError(RecetarioError):
     """Se quiso desencolar / ver el frente de una cola vacía."""
 
 
-class ArchivoInvalidoError(Exception):
+class ArchivoInvalidoError(RecetarioError):
     """El archivo no existe, está truncado o no tiene el formato esperado."""
 
 
-class SubrecetaFaltanteError(Exception):
+class SubrecetaFaltanteError(RecetarioError):
     """Una receta referencia como sub-receta a un id que no está en el catálogo."""
 
 
-class CicloSubrecetasError(Exception):
+class CicloSubrecetasError(RecetarioError):
     """Una receta termina usándose a sí misma (A usa B, B usa A): la recursión no terminaría."""
+
+
+class DatoInvalidoError(RecetarioError):
+    """Un valor no es válido para una receta (vacío, con comas, tiempo negativo, etc.)."""

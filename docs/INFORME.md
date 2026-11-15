@@ -73,6 +73,45 @@ SistemaRecetario
  └── menu: MenuSemanal  (hasta 7 Receta, una por día)
 ```
 
+### Encapsulamiento y TADs en el modelo (E3)
+
+```text
+SistemaRecetario                      (el CLI solo usa sus métodos/properties públicos)
+ ├── recetario: Recetario
+ │     ├── _recetas: ListaEnlazada[Receta]        catálogo completo (bonus: el catálogo también es lista enlazada)
+ │     └── _subrecetas: dict {id: [ids]}          relación receta -> sub-recetas
+ ├── menu: MenuSemanal
+ │     └── _recetas: ListaEnlazada[Receta]        colección principal, tope 7 (un día por posición)
+ ├── historial: Historial
+ │     └── _pila: Pila  (sobre ListaEnlazada)     recetas cocinadas, la última arriba
+ └── cola: ColaPreparacion
+       └── _cola: Cola  (sobre ListaEnlazada)     recetas esperando para cocinarse
+```
+
+Flujo entre colecciones: **menú semanal** → (opción 8.5) se encolan todas en la **cola de preparación** → (8.3) "preparar la siguiente" desencola la primera y la **apila en el historial** → (7.3) "deshacer" desapila la última cocinada.
+
+Encapsulamiento:
+
+- Todos los atributos internos empiezan con `_` (`_cabeza`, `_items`, `_recetas`, `_pila`, ...). Desde `src/cli/` y `src/main.py` **nunca** se accede a ellos: solo se llaman métodos (`agregar`, `quitar`, `apilar`, `desencolar`, ...).
+- `Receta` expone sus datos con `@property`. Los setters validan (nombre sin comas ni vacío, tiempo entero > 0, dificultad `baja|media|alta`) y lanzan `DatoInvalidoError`. El `id` no tiene setter: es la identidad de la receta.
+- `Receta.ingredientes` devuelve una **tupla** (copia inmutable): desde afuera no se puede modificar la lista interna.
+- `Ingrediente` es inmutable (solo properties de lectura).
+
+Excepciones propias (`src/excepciones.py`, todas heredan de `RecetarioError`):
+
+| Excepción | Cuándo se lanza | Dónde se captura |
+| --- | --- | --- |
+| `ItemNoEncontradoError` | id de receta inexistente; receta que no está en el menú; día sin receta | pantallas 2, 5, 6, 7, 8 |
+| `ColeccionLlenaError` | agregar una 8.ª receta al menú semanal | pantalla 6 |
+| `ColeccionVaciaError` | quitar/cambiar en el menú vacío; encolar el menú vacío | pantallas 6 y 8 |
+| `PilaVaciaError` | deshacer / ver la última con el historial vacío | pantalla 7 |
+| `ColaVaciaError` | preparar / ver la próxima con la cola vacía | pantalla 8 |
+| `SubrecetaFaltanteError`, `CicloSubrecetasError` | datos inconsistentes en la recursión | pantalla 5 |
+| `DatoInvalidoError` | valor inválido para una receta | altas/modificaciones (E5) |
+| `ArchivoInvalidoError` | archivo inexistente, truncado o con formato malo | archivos (E5) |
+
+Además `main.py` tiene una red de seguridad `except RecetarioError` alrededor de cada opción. No hay ningún `except:` pelado.
+
 ## 3. Recursión (E2)
 
 Archivo: `src/dominio/desglose.py`. Datos: `subrecetas.txt` + `ingredientes.txt` (en E2 cargados desde `datos_iniciales.py`).
@@ -134,13 +173,29 @@ Ejemplo **sin** cadena (caso base directo): `arbol_subrecetas(recetario, 3)` →
 
 ## 4. TADs (E3)
 
+Implementados en `src/tads/`, sin `list` de Python por debajo: cada dato vive en un `Nodo` con referencia `siguiente`.
+
 | TAD | Operaciones | Invariante |
 | --- | --- | --- |
-| ListaEnlazada |  |  |
-| Pila |  |  |
-| Cola |  |  |
+| `Nodo` | `dato`, `siguiente` | `siguiente` es otro `Nodo` o `None` (último) |
+| `ListaEnlazada` | `esta_vacia`, `tamanio`/`len`, `insertar_al_inicio` O(1), `insertar_al_final` O(1), `insertar_ordenado` O(n), `eliminar(dato)` O(n), `eliminar_primero` O(1), `primero` O(1), `buscar` / `buscar_por(condicion)` O(n), `obtener_en` / `reemplazar_en` O(n), `a_lista` O(n), `__iter__` (iterador propio con `__next__`) | `_tamanio == 0` ⇔ `_cabeza is None` ⇔ `_ultimo is None`; desde `_cabeza` siguiendo `.siguiente` se visitan exactamente `_tamanio` nodos y el último es `_ultimo` (con `.siguiente is None`) |
+| `Pila` | `apilar` O(1), `desapilar` O(1), `ver_tope` O(1), `esta_vacia`, `tamanio`, `__iter__` (tope → base) | el tope es la cabeza de la lista = el último dato apilado que no se desapiló; `desapilar`/`ver_tope` en vacía lanzan `PilaVaciaError` |
+| `Cola` | `encolar` O(1), `desencolar` O(1), `ver_frente` O(1), `esta_vacia`, `tamanio`, `__iter__` (frente → final) | el frente es la cabeza = el dato más antiguo sin desencolar; se encola por `_ultimo`; en vacía lanzan `ColaVaciaError` |
 
-Dónde se usa cada uno en el dominio.
+Decisiones:
+
+- La lista guarda `_ultimo` además de `_cabeza` para que `insertar_al_final` (y por lo tanto `encolar`) sea O(1) en lugar de recorrer toda la lista.
+- `Pila` y `Cola` usan `primero()` / `eliminar_primero()` de la lista, así no tocan `_cabeza` de otra clase.
+- El iterador es una clase propia (`IteradorLista`) con `__iter__` y `__next__`; cuando llega a `None` lanza `StopIteration` y el `for` termina.
+
+Dónde se usa cada uno en el dominio:
+
+| Estructura | Clase del dominio | Uso |
+| --- | --- | --- |
+| `ListaEnlazada` | `Recetario._recetas` | catálogo completo; la opción 1 lo lista con `for receta in recetario` (iterador) |
+| `ListaEnlazada` con tope | `MenuSemanal._recetas` | colección principal: alta / baja / modificación, máximo 7 (`ColeccionLlenaError`) |
+| `Pila` | `Historial._pila` | recetas cocinadas; deshacer = desapilar la última |
+| `Cola` | `ColaPreparacion._cola` | la primera receta encolada es la primera que se prepara |
 
 ## 5. Complejidad (E4)
 

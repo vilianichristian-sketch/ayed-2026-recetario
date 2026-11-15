@@ -2,12 +2,31 @@
 
 
 class Ingrediente:
-    """Ingrediente de una receta: nombre, cantidad y unidad (ej. 50 g de perejil)."""
+    """Ingrediente de una receta: nombre, cantidad y unidad (ej. 50 g de perejil).
+
+    Es inmutable: los atributos son "privados" (_) y solo tienen property de
+    lectura. Para cambiar una cantidad se crea otro Ingrediente.
+    """
 
     def __init__(self, nombre, cantidad, unidad):
-        self.nombre = nombre
-        self.cantidad = cantidad
-        self.unidad = unidad
+        self._nombre = nombre.strip()
+        self._cantidad = cantidad
+        self._unidad = unidad.strip()
+
+    @property
+    def nombre(self):
+        return self._nombre
+
+    @property
+    def cantidad(self):
+        return self._cantidad
+
+    @property
+    def unidad(self):
+        return self._unidad
 
     def __str__(self):
-        return f"{self.cantidad:g} {self.unidad} de {self.nombre}"
+        return f"{self._cantidad:g} {self._unidad} de {self._nombre}"
+
+    def __repr__(self):
+        return f"Ingrediente({self._nombre!r}, {self._cantidad!r}, {self._unidad!r})"
