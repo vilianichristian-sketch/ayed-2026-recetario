@@ -1,5 +1,6 @@
 """Clase Receta: el ítem del catálogo."""
 
+from src.dominio.normalizar import normalizar
 from src.excepciones import DatoInvalidoError
 
 # Tupla: inmutable a propósito, las dificultades válidas no cambian.
@@ -50,6 +51,13 @@ class Receta:
     @nombre.setter
     def nombre(self, valor):
         self._nombre = _validar_texto(valor, "nombre")
+        # Se calcula una sola vez: es la clave para buscar y ordenar por nombre.
+        self._nombre_normalizado = normalizar(self._nombre)
+
+    @property
+    def nombre_normalizado(self):
+        """Nombre en minúsculas y sin tildes ('Puré' -> 'pure')."""
+        return self._nombre_normalizado
 
     @property
     def tiempo_min(self):
@@ -88,6 +96,14 @@ class Receta:
     # ------------------------------------------------------------ comportamiento
     def agregar_ingrediente(self, ingrediente):
         self._ingredientes.append(ingrediente)
+
+    def usa_ingrediente(self, texto):
+        """True si algún ingrediente propio contiene `texto` (sin importar mayúsculas/tildes)."""
+        buscado = normalizar(texto)
+        for ingrediente in self._ingredientes:
+            if buscado in normalizar(ingrediente.nombre):
+                return True
+        return False
 
     def nivel_dificultad(self):
         """0 = baja, 1 = media, 2 = alta (para ordenar por dificultad)."""

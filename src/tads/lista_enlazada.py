@@ -55,6 +55,12 @@ class ListaEnlazada:
             raise ColeccionVaciaError("La lista está vacía.")
         return self._cabeza.dato
 
+    def ultimo(self):
+        """Dato del último nodo, sin sacarlo. O(1) gracias a _ultimo."""
+        if self.esta_vacia():
+            raise ColeccionVaciaError("La lista está vacía.")
+        return self._ultimo.dato
+
     def buscar(self, dato):
         """Devuelve el dato guardado que sea igual (==) a `dato`, o None. O(n)."""
         return self.buscar_por(lambda elemento: elemento == dato)

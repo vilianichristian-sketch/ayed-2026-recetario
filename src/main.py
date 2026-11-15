@@ -23,8 +23,8 @@ def pendiente(_sistema):
 OPCIONES = {
     "1": ("Listar catálogo", pantallas.listar_catalogo),
     "2": ("Ver detalle", pantallas.ver_detalle),
-    "3": ("Buscar", pendiente),
-    "4": ("Ordenar", pendiente),
+    "3": ("Buscar (lineal / binaria)", pantallas.buscar),
+    "4": ("Ordenar (selección / inserción / shell)", pantallas.ordenar),
     "5": ("Operación recursiva (desglose de sub-recetas)", pantallas.operacion_recursiva),
     "6": ("Colección principal (menú semanal)", pantallas.menu_semanal),
     "7": ("Historial de recetas cocinadas (pila)", pantallas.historial),

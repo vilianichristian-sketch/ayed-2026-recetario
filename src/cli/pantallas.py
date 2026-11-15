@@ -4,7 +4,7 @@ Acá no hay lógica del negocio: solo entrada/salida y captura de excepciones pr
 Nunca se accede a atributos internos (los que empiezan con _) de las clases.
 """
 
-from src.cli.entrada import ejecutar_submenu, pedir_entero
+from src.cli.entrada import ejecutar_submenu, pedir_entero, pedir_texto
 from src.dominio.desglose import arbol_subrecetas, ingredientes_totales
 from src.excepciones import (
     CicloSubrecetasError,
@@ -37,7 +37,8 @@ def listar_catalogo(sistema):
     print(ENCABEZADO)
     for receta in sistema.recetario:  # usa el iterador de la ListaEnlazada
         print(receta.resumen())
-    print(f"Total: {sistema.recetario.cantidad()} recetas.")
+    orden = sistema.recetario.orden_actual or "sin orden (se agregaron recetas)"
+    print(f"Total: {sistema.recetario.cantidad()} recetas. Orden actual: {orden}.")
 
 
 # ---------------------------------------------------------------- 2. Detalle
@@ -55,6 +56,118 @@ def ver_detalle(sistema):
             except ItemNoEncontradoError:
                 nombres.append(f"#{id_sub} (no está en el catálogo)")
         print("  Usa las sub-recetas: " + ", ".join(nombres))
+
+
+# ---------------------------------------------------------------- 3. Buscar
+def _imprimir_recetas(recetas):
+    print(ENCABEZADO)
+    for receta in recetas:
+        print(receta.resumen())
+
+
+def _buscar_nombre_lineal(sistema):
+    nombre = pedir_texto("Nombre exacto (sin importar mayúsculas/tildes): ")
+    if nombre == "":
+        print("Cancelado.")
+        return
+    receta = sistema.recetario.buscar_lineal_por_nombre(nombre)
+    if receta is not None:
+        print("Encontrada con búsqueda lineal:")
+        print(receta.detalle())
+        return
+    print(f"No se encontró ninguna receta llamada '{nombre}'.")
+    parecidas = sistema.recetario.buscar_por_texto_en_nombre(nombre)
+    if parecidas:
+        print("Recetas cuyo nombre contiene ese texto:")
+        _imprimir_recetas(parecidas)
+
+
+def _buscar_nombre_binaria(sistema):
+    nombre = pedir_texto("Nombre exacto (sin importar mayúsculas/tildes): ")
+    if nombre == "":
+        print("Cancelado.")
+        return
+    receta, se_reordeno = sistema.recetario.buscar_binaria_por_nombre(nombre)
+    if se_reordeno:
+        print("Aviso: el catálogo no estaba ordenado por nombre. Se ordenó por nombre "
+              "(inserción) para poder usar búsqueda binaria.")
+    else:
+        print("El catálogo ya estaba ordenado por nombre: se usa búsqueda binaria directamente.")
+    if receta is None:
+        print(f"No se encontró ninguna receta llamada '{nombre}' (búsqueda binaria).")
+    else:
+        print("Encontrada con búsqueda binaria:")
+        print(receta.detalle())
+
+
+def _buscar_categoria(sistema):
+    print("Categorías: " + ", ".join(sistema.recetario.categorias()))
+    categoria = pedir_texto("Categoría: ")
+    if categoria == "":
+        print("Cancelado.")
+        return
+    recetas = sistema.recetario.filtrar_por_categoria(categoria)
+    if not recetas:
+        print(f"No se encontraron recetas de la categoría '{categoria}'.")
+        return
+    _imprimir_recetas(recetas)
+    print(f"{len(recetas)} recetas encontradas (búsqueda lineal).")
+
+
+def _buscar_ingrediente(sistema):
+    ingrediente = pedir_texto("Ingrediente (o parte del nombre): ")
+    if ingrediente == "":
+        print("Cancelado.")
+        return
+    recetas = sistema.recetario.filtrar_por_ingrediente(ingrediente)
+    if not recetas:
+        print(f"No se encontraron recetas que usen '{ingrediente}'.")
+        return
+    _imprimir_recetas(recetas)
+    print(f"{len(recetas)} recetas usan '{ingrediente}' entre sus ingredientes propios (búsqueda lineal).")
+
+
+def _buscar_id(sistema):
+    receta = _pedir_receta(sistema)
+    if receta is not None:
+        print("Encontrada con el índice por id (dict, O(1)):")
+        print(receta.detalle())
+
+
+def buscar(sistema):
+    ejecutar_submenu(
+        "Buscar",
+        {
+            "1": ("Por nombre (búsqueda lineal)", _buscar_nombre_lineal),
+            "2": ("Por nombre (búsqueda binaria; ordena por nombre si hace falta)", _buscar_nombre_binaria),
+            "3": ("Por categoría (lineal, todas las coincidencias)", _buscar_categoria),
+            "4": ("Por ingrediente (lineal, todas las coincidencias)", _buscar_ingrediente),
+            "5": ("Por id (índice dict)", _buscar_id),
+        },
+        sistema,
+    )
+
+
+# ---------------------------------------------------------------- 4. Ordenar
+CRITERIOS_MENU = {"1": "nombre", "2": "tiempo", "3": "dificultad", "4": "id"}
+ALGORITMOS_MENU = {"1": ("seleccion", "selección"), "2": ("insercion", "inserción"), "3": ("shell", "shell")}
+
+
+def ordenar(sistema):
+    print("Ordenar por: 1) Nombre  2) Tiempo  3) Dificultad  4) Id (orden original)")
+    criterio = CRITERIOS_MENU.get(pedir_texto("> "))
+    if criterio is None:
+        print("Criterio inválido. No se ordenó nada.")
+        return
+    print("Algoritmo: 1) Selección (no estable)  2) Inserción (estable)  3) Shell (no estable)")
+    algoritmo = ALGORITMOS_MENU.get(pedir_texto("> "))
+    if algoritmo is None:
+        print("Algoritmo inválido. No se ordenó nada.")
+        return
+    clave_algoritmo, nombre_algoritmo = algoritmo
+    sistema.recetario.ordenar(criterio, clave_algoritmo)
+    print(f"Catálogo ordenado por {criterio} ({nombre_algoritmo}).")
+    listar_catalogo(sistema)
 
 
 # ---------------------------------------------------------------- 5. Recursión

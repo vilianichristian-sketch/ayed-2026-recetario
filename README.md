@@ -24,17 +24,21 @@ En Windows, si `python` no anda: `py -3 -m src.main`.
 
 Solo biblioteca estándar. No hay `requirements.txt` a propósito.
 
-## Qué hace (estado en esta entrega: E3)
+## Qué hace (estado en esta entrega: E4)
 
 | Opción | Estado |
 | --- | --- |
 | 1. Listar catálogo | ✅ recorre la `ListaEnlazada` con su iterador |
-| 2. Ver detalle | ✅ datos, ingredientes propios y sub-recetas |
+| 2. Ver detalle | ✅ por id, con índice `dict` O(1) |
+| 3. Buscar | ✅ lineal por nombre / categoría / ingrediente; binaria por nombre (ordena y avisa si hace falta) |
+| 4. Ordenar | ✅ por nombre, tiempo, dificultad o id con selección, inserción o shell (propios) |
 | 5. Operación recursiva | ✅ árbol de sub-recetas e ingredientes totales (con traza) |
 | 6. Menú semanal | ✅ alta / baja / modificación sobre `ListaEnlazada`, tope 7 |
 | 7. Historial (pila) | ✅ registrar (apilar), deshacer (desapilar), ver última (tope) |
 | 8. Cola de preparación | ✅ encolar, preparar siguiente (desencolar → historial), ver próxima, encolar el menú |
-| 3, 4, 9 | se completan en E4–E5 |
+| 9 | se completa en E5 |
+
+Mediciones de tiempo: `python -m src.algoritmos.medicion` (resultados en `docs/INFORME.md` §5).
 
 ## Estructura
 
@@ -48,7 +52,7 @@ src/
                    SistemaRecetario,
                    desglose.py (recursión) y datos_iniciales.py (catálogo armado en el código)
   tads/            Nodo, ListaEnlazada (con iterador), Pila y Cola
-  algoritmos/      (E4)
+  algoritmos/      busqueda.py, ordenamiento.py, medicion.py
   persistencia/    (E5)
 data/              datasets .txt (se leen recién en E5)
 docs/              INFORME.md, PROTOCOLO_PRUEBAS.md, DECLARACION_IA.md

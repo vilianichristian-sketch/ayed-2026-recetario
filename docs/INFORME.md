@@ -199,15 +199,110 @@ Dónde se usa cada uno en el dominio:
 
 ## 5. Complejidad (E4)
 
-| Operación | Tiempo | Espacio | Por qué |
-| --- | --- | --- | --- |
-|  |  |  |  |
+Código: `src/algoritmos/busqueda.py` (lineal y binaria), `src/algoritmos/ordenamiento.py` (selección, inserción y shell), usados desde `Recetario` (`src/dominio/recetario.py`) y las opciones 3 y 4 del menú. No se usa `sorted`, `list.sort` ni `bisect` para cumplir los requisitos (solo aparece `sorted` en el apéndice comparativo de las mediciones).
 
-Mediciones (`time.perf_counter`):
+### Cómo se conecta con el CLI
+
+- **3 → 1** búsqueda lineal por nombre (exacto, sin importar mayúsculas ni tildes); si no la encuentra muestra las recetas cuyo nombre contiene ese texto.
+- **3 → 2** búsqueda binaria por nombre. El `Recetario` recuerda por qué criterio está ordenado (`orden_actual`). Si no está ordenado por nombre, **primero lo ordena (inserción) y avisa**; nunca corre la binaria sobre datos desordenados. Al agregar una receta al final que rompe el orden, `orden_actual` pasa a `None`.
+- **3 → 3 / 3 → 4** búsqueda lineal de todas las recetas de una categoría / que usan un ingrediente.
+- **3 → 5** por id con el índice `dict`.
+- **4** ordenar por nombre, tiempo, dificultad o id con selección, inserción o shell.
+
+Como el catálogo vive en una `ListaEnlazada` (sin acceso por índice), para ordenar y para la binaria se copia a una `list` con `a_lista()` (O(n)), se trabaja sobre la copia y, al ordenar, se rearma la lista enlazada en el nuevo orden (O(n)). Ese costo lineal queda tapado por el O(n²) del ordenamiento, pero sí pesa en la binaria (ver abajo).
+
+### Tabla de complejidad
+
+| Operación | Tiempo | Espacio extra | Por qué |
+| --- | --- | --- | --- |
+| Listar catálogo (opción 1) | O(n) | O(1) | El iterador visita cada nodo una vez. |
+| Ver detalle por id (opción 2, con índice dict) | O(1) promedio | O(n) el índice | El dict calcula el hash del id y va directo a la receta. |
+| Obtener por id sin índice (recorriendo la lista) | O(n) | O(1) | En el peor caso (último o inexistente) compara con los n nodos. |
+| Búsqueda lineal por nombre | O(n) peor / O(1) mejor | O(1) | Compara de a uno hasta encontrarla o terminar la lista. |
+| Búsqueda por categoría / ingrediente | O(n) / O(n·k) | O(r) resultados | Recorre todo el catálogo (quiere *todas* las coincidencias); k = ingredientes por receta. |
+| Búsqueda binaria por nombre (lista ya ordenada) | O(log n) | O(1) | Cada comparación descarta la mitad del rango: con 3000 recetas, ~12 comparaciones. |
+| Copiar `ListaEnlazada` → `list` antes de la binaria | O(n) | O(n) | Hay que recorrer los n nodos; es el precio de no tener índices en la lista enlazada. |
+| Ordenar por selección | O(n²) siempre | O(n) copia | Para cada i busca el mínimo de lo que queda: n−1 + n−2 + … + 1 ≈ n²/2 comparaciones, aunque ya esté ordenado. |
+| Ordenar por inserción | O(n) mejor / O(n²) peor y promedio | O(n) copia | Si ya está ordenado cada elemento se compara una vez; si está al revés desplaza todo. |
+| Ordenar por shell (gaps n/2, n/4, …, 1) | ~O(n^1.3) en la práctica, O(n²) peor | O(n) copia | Inserción con saltos: acerca rápido los elementos lejanos y la pasada final con gap 1 trabaja sobre algo casi ordenado. |
+| Rearmar la lista enlazada después de ordenar | O(n) | O(n) | `insertar_al_final` es O(1) gracias a `_ultimo`. |
+| Agregar receta al catálogo | O(1) | O(1) | `insertar_al_final` O(1) + alta en el dict O(1). |
+| Menú semanal: agregar / quitar / cambiar día | O(1) / O(n) / O(n) | O(1) | Agregar al final usa `_ultimo`; quitar y cambiar día recorren (n ≤ 7). |
+| Pila: apilar / desapilar / ver tope | O(1) | O(1) | Siempre se opera sobre la cabeza de la lista. |
+| Cola: encolar / desencolar / ver frente | O(1) | O(1) | Se encola por `_ultimo` y se desencola por la cabeza. |
+| Recursión `ingredientes_totales` | O(R + I) | O(p) pila de llamadas | R = recetas del árbol de sub-recetas, I = ingredientes de esas recetas; p = profundidad del árbol (2 en el dataset). |
+
+### Estabilidad (selección vs. inserción)
+
+Un ordenamiento es **estable** si dos elementos con la misma clave quedan en el mismo orden relativo que tenían antes. Ejemplo real, ordenando por **tiempo** el catálogo recién cargado (orden por id): Flan casero (#15) y Pollo al horno con papas (#22) tardan los dos 70 min.
+
+- **Inserción (estable):** quedan Flan casero (#15) y después Pollo al horno (#22), como estaban. Solo desplaza los elementos *estrictamente* mayores, así que nunca saltea a uno igual.
+- **Selección (no estable):** quedan al revés, #22 antes que #15. En la vuelta i = 14 el Flan (#15) estaba en la posición 14, el mínimo de lo que faltaba era Curry de garbanzos (#29, 40 min, posición 28) y el intercambio mandó al Flan a la posición 28, detrás del Pollo. Lo mismo pasa al ordenar por dificultad: entre las 11 recetas "media", selección las deja en orden 10, 11, 20, 21, 13, 5, ... e inserción en 5, 6, 9, 10, ...
+- **Shell (no estable):** los saltos grandes también pueden invertir elementos iguales.
+
+Por eso, si se quiere "ordenar por tiempo y, a igual tiempo, mantener el orden anterior", hay que usar inserción.
+
+### Mediciones (`time.perf_counter`)
+
+Script: `python -m src.algoritmos.medicion`. n = 30 es el dataset original; 300 y 3000 son copias agrandadas (×10 y ×100) repitiendo las filas con otro id y un sufijo en el nombre. Las operaciones rápidas se repiten cientos/miles de veces y se informa el promedio de una llamada. Máquina: notebook con Windows 11, Python 3.13.
 
 | Operación | n | segundos |
 | --- | --- | --- |
-|  |  |  |
+| listar catálogo (iterador ListaEnlazada) | 30 | 0.00000564 |
+| listar catálogo (iterador ListaEnlazada) | 300 | 0.00004833 |
+| listar catálogo (iterador ListaEnlazada) | 3000 | 0.00036503 |
+| búsqueda lineal por nombre (peor caso: no existe) | 30 | 0.00000884 |
+| búsqueda lineal por nombre (peor caso: no existe) | 300 | 0.00008022 |
+| búsqueda lineal por nombre (peor caso: no existe) | 3000 | 0.00063646 |
+| búsqueda binaria por nombre (no existe; lista ya ordenada) | 30 | 0.00000159 |
+| búsqueda binaria por nombre (no existe; lista ya ordenada) | 300 | 0.00000325 |
+| búsqueda binaria por nombre (no existe; lista ya ordenada) | 3000 | 0.00000318 |
+| copiar ListaEnlazada a list (a_lista, previo a la binaria) | 30 | 0.00000524 |
+| copiar ListaEnlazada a list (a_lista, previo a la binaria) | 300 | 0.00004327 |
+| copiar ListaEnlazada a list (a_lista, previo a la binaria) | 3000 | 0.00034573 |
+| obtener por id con índice dict (último id) | 30 | 0.00000018 |
+| obtener por id con índice dict (último id) | 300 | 0.00000016 |
+| obtener por id con índice dict (último id) | 3000 | 0.00000017 |
+| obtener por id recorriendo la lista (último id) | 30 | 0.00000789 |
+| obtener por id recorriendo la lista (último id) | 300 | 0.00006719 |
+| obtener por id recorriendo la lista (último id) | 3000 | 0.00066842 |
+| ordenar por nombre: selección | 30 | 0.00012757 |
+| ordenar por nombre: selección | 300 | 0.00951773 |
+| ordenar por nombre: selección | 3000 | 1.02643860 |
+| ordenar por nombre: inserción (entrada desordenada) | 30 | 0.00007016 |
+| ordenar por nombre: inserción (entrada desordenada) | 300 | 0.00423880 |
+| ordenar por nombre: inserción (entrada desordenada) | 3000 | 0.45140850 |
+| ordenar por nombre: inserción (entrada ya ordenada, mejor caso) | 30 | 0.00001211 |
+| ordenar por nombre: inserción (entrada ya ordenada, mejor caso) | 300 | 0.00010287 |
+| ordenar por nombre: inserción (entrada ya ordenada, mejor caso) | 3000 | 0.00157860 |
+| ordenar por nombre: shell | 30 | 0.00005723 |
+| ordenar por nombre: shell | 300 | 0.00095810 |
+| ordenar por nombre: shell | 3000 | 0.01634770 |
+| [apéndice] sorted() de Python por nombre | 30 | 0.00000581 |
+| [apéndice] sorted() de Python por nombre | 300 | 0.00007187 |
+| [apéndice] sorted() de Python por nombre | 3000 | 0.00180880 |
+
+Lectura de los resultados (lo que se ve en la tendencia):
+
+- **Lineal (O(n))**: al multiplicar n por 10 el tiempo se multiplica por ~10 (listar, búsqueda lineal, obtener sin índice, copiar a list).
+- **Binaria (O(log n))**: casi no cambia entre 30, 300 y 3000; pasa de ~5 a ~12 comparaciones.
+- **Selección e inserción (O(n²))**: al multiplicar n por 10 el tiempo se multiplica por ~100 (de 300 a 3000 pasa de centésimas de segundo a casi un segundo en selección).
+- **Inserción en el mejor caso (ya ordenada)**: crece lineal, como predice O(n).
+- **Shell** queda muy por debajo de selección e inserción a medida que n crece.
+- **Índice dict**: el tiempo es el mismo con 30 o con 3000 recetas (O(1)), mientras que buscar el mismo id recorriendo la lista crece lineal.
+- `sorted()` de Python (Timsort, en C) es el más rápido: se deja solo como referencia, no se usa para cumplir el requisito.
+
+### Índice dict además de la lista enlazada (nota extra)
+
+El catálogo completo vive en la `ListaEnlazada` (es la estructura "oficial": el listado, el orden y las búsquedas por nombre la recorren). Además `Recetario` mantiene `_indice`, un `dict` id → `Receta`.
+
+- **Qué ganamos:** buscar por id (ver detalle, agregar al menú, encolar, la recursión que pide cada sub-receta por id) pasa de O(n) a O(1). En las mediciones: con 3000 recetas, ~0,17 µs con el índice contra ~670 µs recorriendo la lista.
+- **Qué pagamos:** memoria extra O(n) (una entrada por receta, aunque las recetas no se duplican: el dict guarda referencias a los mismos objetos) y **sincronización**: cada alta o baja tiene que actualizar la lista **y** el dict; si uno se olvida, quedan inconsistentes. Por eso todas las altas/bajas pasan por métodos de `Recetario` (`agregar`, y en E5 `eliminar`) y nadie toca `_indice` desde afuera.
+- El índice solo sirve para buscar por id exacto: para nombre, categoría o ingrediente igual hay que recorrer (o ordenar y usar binaria).
+
+### Tercer algoritmo (nota extra)
+
+Además de selección e inserción se implementó **Shell sort** (`ordenar_shell`), disponible en el menú (opción 4 → algoritmo 3) y medido en la tabla de arriba.
 
 ## 6. Persistencia (E5)
 
