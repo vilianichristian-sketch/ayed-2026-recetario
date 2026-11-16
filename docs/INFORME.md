@@ -96,6 +96,7 @@ Encapsulamiento:
 - `Receta` expone sus datos con `@property`. Los setters validan (nombre sin comas ni vacío, tiempo entero > 0, dificultad `baja|media|alta`) y lanzan `DatoInvalidoError`. El `id` no tiene setter: es la identidad de la receta.
 - `Receta.ingredientes` devuelve una **tupla** (copia inmutable): desde afuera no se puede modificar la lista interna.
 - `Ingrediente` es inmutable (solo properties de lectura).
+- Mutabilidad en el modelo final: `Receta` es mutable a propósito (la modificación del ABM cambia sus campos a través de setters que validan) pero su `id` no; `Ingrediente` es inmutable; las claves del dict de la recursión son tuplas `(nombre, unidad)`, que pueden ser clave justamente por ser inmutables (una `list` no podría); `DIFICULTADES` y `DIAS` son tuplas.
 
 Excepciones propias (`src/excepciones.py`, todas heredan de `RecetarioError`):
 
@@ -114,7 +115,7 @@ Además `main.py` tiene una red de seguridad `except RecetarioError` alrededor d
 
 ## 3. Recursión (E2)
 
-Archivo: `src/dominio/desglose.py`. Datos: `subrecetas.txt` + `ingredientes.txt` (en E2 cargados desde `datos_iniciales.py`).
+Archivo: `src/dominio/desglose.py`. Datos: `subrecetas.txt` + `ingredientes.txt` (en E2–E4 cargados desde `datos_iniciales.py`; desde E5 leídos de los `.txt`).
 
 Hay dos funciones recursivas con la misma estructura:
 
@@ -178,7 +179,7 @@ Implementados en `src/tads/`, sin `list` de Python por debajo: cada dato vive en
 | TAD | Operaciones | Invariante |
 | --- | --- | --- |
 | `Nodo` | `dato`, `siguiente` | `siguiente` es otro `Nodo` o `None` (último) |
-| `ListaEnlazada` | `esta_vacia`, `tamanio`/`len`, `insertar_al_inicio` O(1), `insertar_al_final` O(1), `insertar_ordenado` O(n), `eliminar(dato)` O(n), `eliminar_primero` O(1), `primero` O(1), `buscar` / `buscar_por(condicion)` O(n), `obtener_en` / `reemplazar_en` O(n), `a_lista` O(n), `__iter__` (iterador propio con `__next__`) | `_tamanio == 0` ⇔ `_cabeza is None` ⇔ `_ultimo is None`; desde `_cabeza` siguiendo `.siguiente` se visitan exactamente `_tamanio` nodos y el último es `_ultimo` (con `.siguiente is None`) |
+| `ListaEnlazada` | `esta_vacia`, `tamanio`/`len`, `insertar_al_inicio` O(1), `insertar_al_final` O(1), `insertar_ordenado` O(n), `eliminar(dato)` O(n), `eliminar_primero` O(1), `primero` / `ultimo` O(1), `buscar` / `buscar_por(condicion)` O(n), `obtener_en` / `reemplazar_en` O(n), `a_lista` O(n), `__iter__` (iterador propio con `__next__`) | `_tamanio == 0` ⇔ `_cabeza is None` ⇔ `_ultimo is None`; desde `_cabeza` siguiendo `.siguiente` se visitan exactamente `_tamanio` nodos y el último es `_ultimo` (con `.siguiente is None`) |
 | `Pila` | `apilar` O(1), `desapilar` O(1), `ver_tope` O(1), `esta_vacia`, `tamanio`, `__iter__` (tope → base) | el tope es la cabeza de la lista = el último dato apilado que no se desapiló; `desapilar`/`ver_tope` en vacía lanzan `PilaVaciaError` |
 | `Cola` | `encolar` O(1), `desencolar` O(1), `ver_frente` O(1), `esta_vacia`, `tamanio`, `__iter__` (frente → final) | el frente es la cabeza = el dato más antiguo sin desencolar; se encola por `_ultimo`; en vacía lanzan `ColaVaciaError` |
 
@@ -231,6 +232,13 @@ Como el catálogo vive en una `ListaEnlazada` (sin acceso por índice), para ord
 | Pila: apilar / desapilar / ver tope | O(1) | O(1) | Siempre se opera sobre la cabeza de la lista. |
 | Cola: encolar / desencolar / ver frente | O(1) | O(1) | Se encola por `_ultimo` y se desencola por la cabeza. |
 | Recursión `ingredientes_totales` | O(R + I) | O(p) pila de llamadas | R = recetas del árbol de sub-recetas, I = ingredientes de esas recetas; p = profundidad del árbol (2 en el dataset). |
+| Cargar / guardar `.txt` (E5) | O(n + I + S) | O(n + I + S) | Lectura/escritura secuencial: una línea por receta, ingrediente (I) y relación de sub-receta (S). |
+| Guardar / cargar binario completo (E5) | O(n) | O(n) | Un `struct.pack` / `unpack` de 74 bytes por registro. |
+| Leer o actualizar un registro del binario por posición (E5) | O(1) | O(1) | `seek(9 + p·74)` va directo al registro; se leen/escriben solo 74 bytes. |
+| Alta en el binario (append) (E5) | O(1) | O(1) | `seek(0, 2)` al final, un registro, y se reescribe solo el header. |
+| Baja en el binario (E5) | O(n) | O(n) | Hay que correr los registros siguientes: se reescribe el archivo sin ese registro. |
+| Posición de un id en la lista (E5) | O(n) | O(1) | `posicion_de` recorre la lista con el iterador hasta encontrarlo. |
+| Baja de receta en memoria (E5) | O(n + S) | O(1) | Revisa si otra receta la usa (S relaciones) y la saca de la lista enlazada (O(n)) y del dict (O(1)). |
 
 ### Estabilidad (selección vs. inserción)
 
@@ -334,6 +342,13 @@ Después de **cada** cambio del catálogo (cargar, ordenar, alta, baja, modifica
 - Los `.txt` se guardan siempre completos y ordenados por id (es un archivo secuencial: no se puede "pisar" una línea del medio).
 - Si alguna vez el `.bin` no coincide con la memoria (no existe, está dañado o tiene otra cantidad de registros), en lugar de append/baja/seek se reescribe entero con `guardar_binario`.
 
+### Regla de oro: memoria = archivos
+
+Después de **cada** cambio del catálogo (cargar, ordenar, alta, baja, modificación) se actualizan los archivos (`repositorio.guardar_todo` y las funciones `persistir_*`). El `.bin` queda siempre **en el mismo orden que la lista enlazada en memoria**, así que la posición de una receta en la lista (`Recetario.posicion_de(id)`, que recorre con el iterador) es también la posición de su registro en el binario. Eso es lo que permite el acceso directo en la modificación.
+
+- Los `.txt` se guardan siempre completos y ordenados por id (es un archivo secuencial: no se puede "pisar" una línea del medio).
+- Si alguna vez el `.bin` no coincide con la memoria (no existe, está dañado o tiene otra cantidad de registros), en lugar de append/baja/seek se reescribe entero con `guardar_binario`.
+
 ### ABM persistente (opción 6)
 
 **Catálogo de recetas** (6 → 5, 6, 7). El cambio se hace en memoria y enseguida en los archivos, así sigue al cerrar y volver a abrir (P13, P14, P24, P27):
@@ -407,6 +422,8 @@ Para modificar "por id", la posición se obtiene de la lista en memoria (`Receta
 | posición fuera de rango | `ItemNoEncontradoError` ("fuera de rango") |
 | `.txt` roto: línea con más o menos campos que el encabezado | `cargar_texto` compara la cantidad de campos de cada línea ("línea N: tiene X campos y se esperaban Y") |
 | `.txt` con encabezados distintos, valores no numéricos o ids repetidos | se valida al convertir cada fila |
+| `.txt` roto: línea con más o menos campos que el encabezado | `cargar_texto` compara la cantidad de campos de cada línea ("línea N: tiene X campos y se esperaban Y") |
+| `.txt` con encabezados distintos, valores no numéricos o ids repetidos | se valida al convertir cada fila |
 
 En todos los casos el menú muestra "Archivo inválido: ..." y el catálogo en memoria no cambia (casos P15 y P23).
 
@@ -415,3 +432,43 @@ En todos los casos el menú muestra "Archivo inválido: ..." y el catálogo en m
 | Integrante | Qué hizo | Qué puede defender |
 | --- | --- | --- |
 | Viliani Christian | Todo el trabajo (trabajo individual) | Todo el repo |
+
+## 8. Dónde está cada requisito de la consigna
+
+| Requisito (consigna) | Dónde está | Opción del menú |
+| --- | --- | --- |
+| 1. Listar catálogo con el iterador | `Recetario.__iter__` → `ListaEnlazada.__iter__` / `IteradorLista.__next__`; `pantallas.listar_catalogo` | 1 |
+| 2. Ver detalle | `Recetario.obtener` (índice dict), `Receta.detalle` | 2 |
+| 3. Buscar (lineal; binaria con catálogo ordenado) | `algoritmos/busqueda.py`; `Recetario.buscar_lineal_por_nombre`, `buscar_binaria_por_nombre`, `filtrar_por_categoria`, `filtrar_por_ingrediente` | 3 |
+| 4. Ordenar por al menos dos criterios | `algoritmos/ordenamiento.py` (selección, inserción, shell); `Recetario.ordenar` con criterios nombre / tiempo / dificultad / id | 4 |
+| 5. Operación recursiva del dominio | `dominio/desglose.py`: `arbol_subrecetas`, `ingredientes_totales` | 5 |
+| 6. ABM sobre la colección principal (persistente) | `MenuSemanal.agregar` / `quitar` / `reemplazar_dia` (ListaEnlazada, tope 7) + `repositorio.guardar_menu`; ABM del catálogo con `persistir_alta` / `persistir_baja` / `persistir_modificacion` | 6 |
+| 7. Push/pop de la pila | `Historial` sobre `tads/pila.py` | 7 (y 8.3 apila automáticamente) |
+| 8. Encolar/desencolar la cola | `ColaPreparacion` sobre `tads/cola.py` | 8 |
+| 9. Guardar y cargar en .txt y binario | `persistencia/texto.py`, `binario.py`, `repositorio.py` | 9 → 1 a 4 |
+| 10. Salir | `main.py` | 0 |
+| TADs propios en módulos separados | `src/tads/nodo.py`, `lista_enlazada.py`, `pila.py`, `cola.py` | — |
+| `ArchivoInvalidoError` con binario corto, magia incorrecta y .txt roto | `binario._leer_header`, `texto.cargar_texto` | 9 → 4 y 9 → 1 |
+| Excepciones propias, sin `except:` pelado | `src/excepciones.py`; capturas en `src/cli/pantallas.py` y red de seguridad en `main.py` | — |
+| Acceso directo a un registro binario por posición | `binario.leer_registro` y `actualizar_registro` (`seek(9 + p·74)`) | 9 → 5 y 6 → 7 |
+| Alta / baja / modificación persistente | `SistemaRecetario.alta_receta` / `baja_receta` / `modificar_receta` + `persistir_*` (append, baja y seek en el .bin; .txt completo) | 6 → 5, 6, 7 |
+| Tabla de complejidad y mediciones | §5 de este informe; `python -m src.algoritmos.medicion` | — |
+| Nota extra: lista enlazada en el catálogo + índice dict comparado | `Recetario._recetas` + `Recetario._indice`; §5 | — |
+| Nota extra: tercer algoritmo medido | `ordenar_shell`; §5 | 4 → algoritmo 3 |
+
+## 9. Regresión (E6)
+
+- El protocolo (`docs/PROTOCOLO_PRUEBAS.md`) tiene 27 casos (P01–P15 de la cátedra + P16–P27 propios); en E6 se volvieron a ejecutar **todos** sobre el código final (recursión, TADs, pila, cola, búsquedas, ordenamientos, archivos de texto y binarios, ABM persistente, entradas inválidas). Resultado: 27 pasan.
+- Cada tag (`entrega-1` … `entrega-6`) arranca con `python -m src.main` y lista el catálogo.
+- Los casos que modifican archivos (P13, P14, P24, P26, P27) se corrieron sobre una copia del repo para no alterar el dataset de la cátedra.
+- Prueba del clone limpio: se clonó el repo en una carpeta nueva, se corrió `python -m src.main` y se probaron las 10 opciones (no depende de archivos sin commitear: el `.bin` y el menú guardado los genera el programa).
+
+## 10. Limitaciones conocidas
+
+- Los nombres no pueden tener comas (la coma separa campos en el `.txt`); el programa lo valida y lo rechaza.
+- En el binario el nombre ocupa 40 bytes: uno más largo se recorta (sin cortar una letra con tilde).
+- En el binario solo va el registro principal de la receta; ingredientes y sub-recetas viven en los `.txt`.
+- No se pueden agregar sub-recetas a una receta que ya existe (solo al darla de alta), y no se puede borrar una receta que otra usa como sub-receta.
+- El historial (pila) y la cola de preparación no se guardan en archivo: duran lo que dura la ejecución.
+- La baja en el binario reescribe el archivo (O(n)); no se usa la técnica de "marcar como borrado".
+

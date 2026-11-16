@@ -1,4 +1,4 @@
-"""Búsqueda lineal y binaria, implementación propia (sin `in`, index() ni bisect).
+"""Búsqueda lineal y binaria, implementación propia (sin list.index(), `in` sobre la colección ni bisect).
 
 `obtener_clave` es una función que, dado un elemento, devuelve el valor a
 comparar (por ejemplo `lambda r: r.nombre_normalizado`). Así el mismo algoritmo

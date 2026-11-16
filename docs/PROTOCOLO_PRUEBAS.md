@@ -8,7 +8,7 @@ Mínimos: 8 casos escritos en E2; ejecutados en E3; 15 de regresión en E6 (pila
 
 Los IDs P01–P15 son los del esqueleto de la cátedra; P16 en adelante son casos agregados por el grupo.
 
-**Última ejecución:** 16-nov-2026, sobre el código de la entrega E5. Los casos de entregas anteriores se vuelven a correr como regresión.
+**Última ejecución:** 16-nov-2026, sobre el código de la entrega E6. Los casos de entregas anteriores se vuelven a correr como regresión.
 
 | ID | Entrega | Acción (pasos en el CLI) | Datos | Resultado esperado | Resultado | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -36,8 +36,8 @@ Los IDs P01–P15 son los del esqueleto de la cátedra; P16 en adelante son caso
 | P22 | E4 | Elegir `3` → `4` (búsqueda lineal por ingrediente) | `papa` | lista Pure de papas, Noquis con pesto, Tortilla de papas, Pollo al horno con papas y Ensalada rusa | pasa |  |
 | P23 | E5 | `9` → `5` (ver registro del binario por posición) con una posición fuera de rango y después con `0` | posición `99`, luego `0` | con 99 avisa "fuera de rango"; con 0 muestra el registro 0 (Chimichurri) leído con seek, sin leer el resto | pasa | el .bin se genera al arrancar |
 | P24 | E5 | `6` → `6` (baja de receta del catálogo) de una receta usada como sub-receta y después de una que no se usa; `1` listar; `9` → `5` (ver cantidad del binario) | id `1` (Chimichurri), luego id `18` (Guacamole), confirmar `s` | con 1 avisa que "es sub-receta de" Asado y Choripan y no la borra; con 18 "Baja guardada"; el listado queda en 29 y el binario tiene 29 registros | pasa | se probó sobre una copia del repo |
-| P25 | E6 | Arrancar el programa y cerrar la entrada (Ctrl+Z + Enter en Windows / Ctrl+D en Linux) | fin de archivo en `input()` | sale con "Chau." sin traceback |  | se ejecuta en E6 |
+| P25 | E6 | Arrancar el programa y cerrar la entrada (Ctrl+Z + Enter en Windows / Ctrl+D en Linux) | fin de archivo en `input()` | sale con "Chau." sin traceback | pasa |  |
 | P26 | E5 | `6` → `2` (agregar al menú semanal) ids `12` y `25`; salir; volver a entrar y `6` → `1` (ver menú) | ids `12` (Locro), `25` (Brownies) | cada cambio dice "guardado en menu_semanal.txt"; al volver a entrar: "Menú semanal recuperado: 2 recetas", Lunes Locro y Martes Brownies | pasa | ABM persistente de la colección principal |
 | P27 | E5 | `6` → `5` (alta) de una receta sin ingredientes; `9` → `5` (ver registro) posición `30` | Tarta, 55, media, principal | el alta se agrega con append al final del .bin; el binario pasa a tener 31 registros y el registro 30 es la Tarta | pasa |  |
 
-Resumen: 26 casos ejecutados, 26 pasan, 0 no pasan.
+Resumen: 27 casos ejecutados, 27 pasan, 0 no pasan.
