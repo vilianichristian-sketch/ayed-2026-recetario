@@ -2,8 +2,6 @@
 
 from src.algoritmos.busqueda import busqueda_binaria, busqueda_lineal, busqueda_lineal_todos
 from src.algoritmos.ordenamiento import ALGORITMOS
-from src.dominio.datos_iniciales import INGREDIENTES, RECETAS, SUBRECETAS
-from src.dominio.ingrediente import Ingrediente
 from src.dominio.normalizar import normalizar
 from src.dominio.receta import Receta
 from src.excepciones import DatoInvalidoError, ItemNoEncontradoError
@@ -36,15 +34,6 @@ class Recetario:
         self._subrecetas = {}
         self._orden = "id"
 
-    def cargar_datos_iniciales(self):
-        """Arma el catálogo desde las tuplas de datos_iniciales.py (los .txt se leen en E5)."""
-        for id_receta, nombre, tiempo, dificultad, categoria in RECETAS:
-            self.agregar(Receta(id_receta, nombre, tiempo, dificultad, categoria))
-        for id_receta, nombre, cantidad, unidad in INGREDIENTES:
-            self.obtener(id_receta).agregar_ingrediente(Ingrediente(nombre, cantidad, unidad))
-        for id_receta, id_sub in SUBRECETAS:
-            self.agregar_subreceta(id_receta, id_sub)
-
     # ------------------------------------------------------------ consultas
     def obtener(self, id_receta):
         """Receta con ese id usando el índice dict: O(1). Si no existe: ItemNoEncontradoError."""
@@ -65,6 +54,19 @@ class Recetario:
 
     def existe(self, id_receta):
         return id_receta in self._indice
+
+    def posicion_de(self, id_receta):
+        """Posición (0-based) de la receta en el orden actual, recorriendo con el iterador. O(n).
+
+        Como el .bin se guarda en el mismo orden que la lista, es también la
+        posición de su registro en el binario (acceso directo).
+        """
+        posicion = 0
+        for receta in self._recetas:
+            if receta.id == id_receta:
+                return posicion
+            posicion += 1
+        raise ItemNoEncontradoError(f"No existe una receta con id {id_receta}.")
 
     def subrecetas_de(self, id_receta):
         """Ids de las sub-recetas directas (tupla vacía si no usa ninguna)."""
@@ -104,9 +106,77 @@ class Recetario:
         """Registra que la receta id_receta usa a la receta id_subreceta."""
         self.obtener(id_receta)      # validan que existan las dos
         self.obtener(id_subreceta)
+        if id_receta == id_subreceta:
+            raise DatoInvalidoError("Una receta no puede ser sub-receta de sí misma.")
         if id_receta not in self._subrecetas:
             self._subrecetas[id_receta] = []
-        self._subrecetas[id_receta].append(id_subreceta)
+        if busqueda_lineal(self._subrecetas[id_receta], id_subreceta) is None:  # sin repetidos
+            self._subrecetas[id_receta].append(id_subreceta)
+
+    def siguiente_id(self):
+        """Id libre para una receta nueva: el mayor id + 1. O(n)."""
+        mayor = 0
+        for receta in self._recetas:
+            if receta.id > mayor:
+                mayor = receta.id
+        return mayor + 1
+
+    def relaciones_subrecetas(self):
+        """Pares (id_receta, id_subreceta), para guardarlos en subrecetas.txt."""
+        pares = []
+        for id_receta, ids_sub in self._subrecetas.items():
+            for id_sub in ids_sub:
+                pares.append((id_receta, id_sub))
+        return pares
+
+    def recetas_que_usan(self, id_subreceta):
+        """Recetas que tienen a id_subreceta como sub-receta directa. O(relaciones)."""
+        usan = []
+        for id_receta, ids_sub in self._subrecetas.items():
+            if busqueda_lineal(ids_sub, id_subreceta) is not None:
+                usan.append(self.obtener(id_receta))
+        return usan
+
+    # ------------------------------------------------------------ bajas y modificaciones (E5)
+    def eliminar(self, id_receta):
+        """Baja: saca la receta de la lista, del índice y sus relaciones. Devuelve la receta.
+
+        No se permite borrar una receta que otra usa como sub-receta (quedaría
+        una sub-receta faltante y la recursión fallaría).
+        """
+        receta = self.obtener(id_receta)
+        usan = self.recetas_que_usan(id_receta)
+        if usan:
+            nombres = []
+            for otra in usan:
+                nombres.append(otra.nombre)
+            raise DatoInvalidoError(
+                f"No se puede borrar '{receta.nombre}': es sub-receta de {', '.join(nombres)}."
+            )
+        self._recetas.eliminar(receta)
+        del self._indice[id_receta]
+        self._subrecetas.pop(id_receta, None)
+        return receta
+
+    def modificar(self, id_receta, nombre=None, tiempo_min=None, dificultad=None, categoria=None):
+        """Modificación: cambia los campos que no son None. Devuelve la receta.
+
+        Primero se validan todos los valores nuevos armando una Receta de prueba:
+        si alguno es inválido no se cambia nada (no queda a medio modificar).
+        """
+        receta = self.obtener(id_receta)
+        nuevo_nombre = receta.nombre if nombre is None else nombre
+        nuevo_tiempo = receta.tiempo_min if tiempo_min is None else tiempo_min
+        nueva_dificultad = receta.dificultad if dificultad is None else dificultad
+        nueva_categoria = receta.categoria if categoria is None else categoria
+        Receta(id_receta, nuevo_nombre, nuevo_tiempo, nueva_dificultad, nueva_categoria)  # valida
+        receta.nombre = nuevo_nombre
+        receta.tiempo_min = nuevo_tiempo
+        receta.dificultad = nueva_dificultad
+        receta.categoria = nueva_categoria
+        if self._orden != "id":
+            self._orden = None  # el campo cambiado puede haber roto el orden actual
+        return receta
 
     # ------------------------------------------------------------ búsquedas (E4)
     def buscar_lineal_por_nombre(self, nombre):

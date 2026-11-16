@@ -63,7 +63,7 @@ Desde E2 el código está partido en módulos y cada concepto es una clase:
 
 `src/main.py` solo arma el menú y despacha cada opción a una función de `src/cli/pantallas.py`.
 
-Los datos iniciales siguen armados en el código (`src/dominio/datos_iniciales.py`, tuplas inmutables copiadas del dataset); los `.txt` se leen en E5.
+En E2–E4 los datos iniciales estaban armados en el código (`src/dominio/datos_iniciales.py`, tuplas inmutables copiadas del dataset). **Desde E5 ese módulo se borró**: el catálogo se lee de `data/*.txt` al arrancar (`src/persistencia/repositorio.py`).
 
 ```text
 SistemaRecetario
@@ -244,7 +244,7 @@ Por eso, si se quiere "ordenar por tiempo y, a igual tiempo, mantener el orden a
 
 ### Mediciones (`time.perf_counter`)
 
-Script: `python -m src.algoritmos.medicion`. n = 30 es el dataset original; 300 y 3000 son copias agrandadas (×10 y ×100) repitiendo las filas con otro id y un sufijo en el nombre. Las operaciones rápidas se repiten cientos/miles de veces y se informa el promedio de una llamada. Máquina: notebook con Windows 11, Python 3.13.
+Script: `python -m src.algoritmos.medicion` (desde E5 lee el dataset de `data/*.txt`). n = 30 es el dataset original; 300 y 3000 son copias agrandadas (×10 y ×100) repitiendo las filas con otro id y un sufijo en el nombre. Las operaciones rápidas se repiten cientos/miles de veces y se informa el promedio de una llamada. Máquina: notebook con Windows 11, Python 3.13.
 
 | Operación | n | segundos |
 | --- | --- | --- |
@@ -306,9 +306,109 @@ Además de selección e inserción se implementó **Shell sort** (`ordenar_shell
 
 ## 6. Persistencia (E5)
 
-- Layout del registro binario (campos, `struct`, anchos):
-- Header:
-- Cómo se actualiza un registro por posición:
+Código: `src/persistencia/texto.py` (texto genérico), `src/persistencia/binario.py` (struct) y `src/persistencia/repositorio.py` (traduce filas ⇄ objetos del dominio y aplica la regla de oro). En el menú: opción **9** (cargar/guardar en los dos formatos y ver un registro por posición) y opción **6** (ABM persistente).
+
+| Opción | Qué hace |
+| --- | --- |
+| 9 → 1 | cargar el catálogo desde un `.txt` (Enter = `data/recetas.txt`) |
+| 9 → 2 | guardar el catálogo en `.txt` |
+| 9 → 3 | guardar el catálogo en binario |
+| 9 → 4 | cargar el catálogo desde binario |
+| 9 → 5 | leer UN registro del binario por posición (acceso directo) |
+| 6 → 2 / 3 / 4 | alta / baja / modificación del menú semanal (se guarda en `data/menu_semanal.txt`) |
+| 6 → 5 / 6 / 7 | alta / baja / modificación de recetas del catálogo (se guardan en `.txt` y `.bin`) |
+
+### Texto simple (.txt)
+
+- Formato: UTF-8, un registro por línea, campos separados por coma, primera línea con los encabezados.
+- Archivos: `recetas.txt` (`id,nombre,tiempo_min,dificultad,categoria`), `ingredientes.txt` (`receta_id,nombre,cantidad,unidad`) y `subrecetas.txt` (`receta_id,subreceta_id`).
+- **Lectura secuencial:** `cargar_texto` recorre el archivo línea por línea, valida que los encabezados sean los esperados y que cada línea tenga la cantidad justa de campos; si no, lanza `ArchivoInvalidoError` con el número de línea. `repositorio.py` convierte cada fila en `Receta` / `Ingrediente` (valida tipos: id y tiempo enteros, dificultad válida, etc.) y verifica que ingredientes y sub-recetas apunten a recetas que existen.
+- **Escritura completa:** `guardar_texto` reescribe el archivo entero (encabezados + filas). Primero escribe un `.tmp` y después hace `os.replace`: si algo falla a la mitad, el archivo anterior queda intacto. No se permiten comas en los valores (los setters de `Receta` e `Ingrediente` ya las rechazan).
+- Al arrancar, `main.py` carga el catálogo desde `data/*.txt`, genera `data/recetas.bin` con ese catálogo y recupera el menú semanal guardado. Si los archivos están mal, avisa y arranca con el catálogo vacío (no explota).
+- Se escribe con fin de línea `\r\n`, igual que el dataset de la cátedra: si los datos no cambiaron, git no ve diferencias.
+
+### Regla de oro: memoria = archivos
+
+Después de **cada** cambio del catálogo (cargar, ordenar, alta, baja, modificación) se actualizan los archivos (`repositorio.guardar_todo` y las funciones `persistir_*`). El `.bin` queda siempre **en el mismo orden que la lista enlazada en memoria**, así que la posición de una receta en la lista (`Recetario.posicion_de(id)`, que recorre con el iterador) es también la posición de su registro en el binario. Eso es lo que permite el acceso directo en la modificación.
+
+- Los `.txt` se guardan siempre completos y ordenados por id (es un archivo secuencial: no se puede "pisar" una línea del medio).
+- Si alguna vez el `.bin` no coincide con la memoria (no existe, está dañado o tiene otra cantidad de registros), en lugar de append/baja/seek se reescribe entero con `guardar_binario`.
+
+### ABM persistente (opción 6)
+
+**Catálogo de recetas** (6 → 5, 6, 7). El cambio se hace en memoria y enseguida en los archivos, así sigue al cerrar y volver a abrir (P13, P14, P24, P27):
+
+| Operación | Memoria | `.txt` | `.bin` |
+| --- | --- | --- | --- |
+| Alta (6 → 5) | `insertar_al_final` en la lista + índice | se reescribe completo | **append**: `alta_binario` hace `seek(0, 2)`, escribe el registro nuevo y vuelve al header (`seek(0)`) para poner cantidad + 1 |
+| Baja (6 → 6) | se saca de la lista, del índice y del menú semanal | se reescribe completo | `baja_binario`: lee los registros, saca el de esa posición, `truncate()` y reescribe (si no, quedaría un hueco de 74 bytes y los siguientes se correrían) |
+| Modificación (6 → 7) | setters de `Receta` (validan) | se reescribe completo | **acceso directo**: `actualizar_registro` hace `seek(9 + p·74)` y pisa solo esos 74 bytes |
+
+- **Alta:** el id es el mayor id + 1; se piden nombre, tiempo, dificultad, categoría, ingredientes (`nombre,cantidad,unidad`) y sub-recetas existentes. Todo se valida antes de tocar el catálogo.
+- **Baja:** no se permite borrar una receta que otra usa como sub-receta (por ejemplo Chimichurri, que usan Asado y Choripan): quedaría una sub-receta faltante y la recursión fallaría. Pide confirmación.
+- **Modificación:** Enter vacío deja el valor actual; si algún valor nuevo es inválido no se cambia nada (se valida armando una `Receta` de prueba antes de asignar). El id no se puede cambiar.
+
+**Menú semanal** (colección principal, 6 → 2, 3, 4): cada alta, baja o cambio de día se guarda en `data/menu_semanal.txt` (`dia,receta_id`). Al arrancar se recupera (P26). Si una receta del menú guardado ya no existe en el catálogo, se avisa y se omite. Ese archivo lo genera el programa y está en `.gitignore`.
+
+### Binario con `struct` (registros de longitud fija)
+
+Todo en *little-endian* (`<`), sin relleno entre campos. Tamaños calculados con `struct.calcsize`.
+
+**Header** — formato `'<4s1sI'`, 9 bytes:
+
+| Campo | Formato | Bytes | Valor |
+| --- | --- | --- | --- |
+| magia | `4s` | 4 | `b'AYED'` |
+| tema | `1s` | 1 | `b'R'` (recetario) |
+| cantidad | `I` | 4 | cantidad de registros (unsigned int) |
+
+**Registro de receta** — formato `'<I40sH8s20s'`, 74 bytes:
+
+| Campo | Formato | Bytes | Notas |
+| --- | --- | --- | --- |
+| id | `I` | 4 | unsigned int |
+| nombre | `40s` | 40 | UTF-8; si sobra se rellena con `\0`, si no entra se recorta sin partir una letra con tilde |
+| tiempo_min | `H` | 2 | unsigned short (0–65535) |
+| dificultad | `8s` | 8 | UTF-8 (`baja`, `media`, `alta`), relleno con `\0` |
+| categoria | `20s` | 20 | UTF-8, relleno con `\0` |
+
+Tamaño del archivo = 9 + 74 × cantidad. Con las 30 recetas del dataset: 9 + 2220 = **2229 bytes**.
+
+Al leer, las cadenas se recuperan con `datos.rstrip(b"\0").decode("utf-8")`.
+
+En el binario va el **registro principal del catálogo**; los ingredientes y las sub-recetas (tablas auxiliares de largo variable) siguen en `.txt`. Al cargar desde binario se toman de ahí y se omiten las filas de recetas que no estén en el binario.
+
+### Acceso directo: actualizar un registro por posición
+
+Como todos los registros miden lo mismo, el registro de la posición `p` (0-based) empieza en el byte:
+
+```text
+offset(p) = TAM_HEADER + p * TAM_REGISTRO = 9 + p * 74
+```
+
+`actualizar_registro(ruta, p, receta)` abre el archivo en modo `"r+b"` (leer y escribir sin borrar; `"wb"` lo vaciaría), valida el header, hace `seek(offset(p))` y escribe **solo esos 74 bytes**; el resto del archivo no se toca: O(1). `leer_registro(ruta, p)` hace lo mismo pero leyendo. Ejemplo: con el catálogo ordenado por id, el Asado (id 9) está en la posición 8 → byte 9 + 8·74 = **601** (caso P14).
+
+Ejemplo para la defensa: "si quiero modificar el registro 7, ¿a qué byte voy?" → 9 + 7·74 = **527**, porque el header ocupa 9 bytes y cada registro anterior 74.
+
+Acceso secuencial vs. directo: en el `.txt`, para llegar al registro 500 hay que leer los 499 anteriores (las líneas miden distinto); en el `.bin` se calcula el byte y se salta con `seek`.
+
+Para modificar "por id", la posición se obtiene de la lista en memoria (`Recetario.posicion_de`), que por la regla de oro coincide con la del `.bin`. En el menú: 6 → 7 (modificar) y 9 → 5 (ver un registro por posición).
+
+### Validaciones de archivos (`ArchivoInvalidoError`)
+
+| Problema | Cómo se detecta |
+| --- | --- |
+| el archivo no existe | `FileNotFoundError` se convierte en `ArchivoInvalidoError` |
+| truncado (menos de 9 bytes) | no alcanza para leer el header |
+| magia distinta de `AYED` | se compara el primer campo del header |
+| otro tema | el byte de tema no es `R` |
+| truncado o con bytes de más | el tamaño real no es 9 + 74 × cantidad |
+| registro con datos inválidos | texto que no es UTF-8 o valores que la `Receta` rechaza |
+| posición fuera de rango | `ItemNoEncontradoError` ("fuera de rango") |
+| `.txt` roto: línea con más o menos campos que el encabezado | `cargar_texto` compara la cantidad de campos de cada línea ("línea N: tiene X campos y se esperaban Y") |
+| `.txt` con encabezados distintos, valores no numéricos o ids repetidos | se valida al convertir cada fila |
+
+En todos los casos el menú muestra "Archivo inválido: ..." y el catálogo en memoria no cambia (casos P15 y P23).
 
 ## 7. Reparto de trabajo (E6)
 

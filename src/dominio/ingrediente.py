@@ -1,5 +1,15 @@
 """Clase Ingrediente: un renglón de la lista de ingredientes de una receta."""
 
+from src.excepciones import DatoInvalidoError
+
+
+def _validar_texto(valor, campo):
+    if not isinstance(valor, str) or valor.strip() == "":
+        raise DatoInvalidoError(f"El {campo} del ingrediente no puede quedar vacío.")
+    if "," in valor:
+        raise DatoInvalidoError(f"El {campo} del ingrediente no puede tener comas.")
+    return valor.strip()
+
 
 class Ingrediente:
     """Ingrediente de una receta: nombre, cantidad y unidad (ej. 50 g de perejil).
@@ -9,9 +19,11 @@ class Ingrediente:
     """
 
     def __init__(self, nombre, cantidad, unidad):
-        self._nombre = nombre.strip()
+        if isinstance(cantidad, bool) or not isinstance(cantidad, (int, float)) or cantidad <= 0:
+            raise DatoInvalidoError("La cantidad del ingrediente tiene que ser un número mayor a 0.")
+        self._nombre = _validar_texto(nombre, "nombre")
         self._cantidad = cantidad
-        self._unidad = unidad.strip()
+        self._unidad = _validar_texto(unidad, "unidad")
 
     @property
     def nombre(self):

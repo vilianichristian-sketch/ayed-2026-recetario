@@ -56,6 +56,9 @@ class MenuSemanal:
         while self._recetas.buscar_por(lambda r: r.id == id_receta) is not None:
             self.quitar(id_receta)
 
+    def vaciar(self):
+        self._recetas.vaciar()
+
     # ------------------------------------------------------------ consultas
     def __iter__(self):
         return iter(self._recetas)

@@ -11,17 +11,18 @@ import time
 
 from src.algoritmos.busqueda import busqueda_binaria, busqueda_lineal
 from src.algoritmos.ordenamiento import ordenar_insercion, ordenar_seleccion, ordenar_shell
+from src.config import CARPETA_DATOS
 from src.dominio.receta import Receta
 from src.dominio.recetario import CRITERIOS, Recetario
+from src.persistencia.repositorio import cargar_recetario
 
 FACTORES = (1, 10, 100)
 CLAVE_NOMBRE = CRITERIOS["nombre"]
 
 
 def recetario_base():
-    recetario = Recetario()
-    recetario.cargar_datos_iniciales()
-    return recetario
+    """El dataset original, leído de data/*.txt."""
+    return cargar_recetario(CARPETA_DATOS)
 
 
 def recetario_agrandado(base, factor):

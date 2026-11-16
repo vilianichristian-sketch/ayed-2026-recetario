@@ -9,3 +9,7 @@ venv/
 *.dat
 .DS_Store
 Thumbs.db
+
+# generados por el programa
+data/*.tmp
+data/menu_semanal.txt

@@ -26,6 +26,9 @@ class ColaPreparacion:
             raise ColaVaciaError("No hay recetas en la cola de preparación.")
         return self._cola.ver_frente()
 
+    def vaciar(self):
+        self._cola = Cola()
+
     def esta_vacia(self):
         return self._cola.esta_vacia()
 
