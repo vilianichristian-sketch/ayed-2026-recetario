@@ -8,7 +8,7 @@ Gestor de un **libro de recetas** en consola (CLI), hecho en Python 3 con biblio
 | --- | --- | --- |
 | Viliani Christian | viliani.christian@gmail.com | @vilianichristian-sketch |
 
-**Comisión:** 1 (trabajo individual)
+**Comisión:** 1 (trabajo individual grupo 69)
 
 **Tema elegido:** Recetario (`TEMA = "recetario"` en `src/config.py`): un libro de 30 recetas donde una receta puede usar otras como sub-recetas (el asado usa chimichurri y salsa criolla), con menú semanal, historial de recetas cocinadas y cola de preparación.
 
